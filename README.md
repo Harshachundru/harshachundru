@@ -16,7 +16,7 @@ Hello ```np.random.random()``` stranger! Welcome to my github page.
 [OK]    async work handed off to Celery and Redis instead of politely waiting its turn in line
 [OK]    every deploy fronted by NGINX, boxed by Docker, provisioned by Ansible
 [OK]    tests written before the code they test, mostly out of habit at this point
-[WARN]  occasionally re-reads its own PostgreSQL migrations at 2am, just to be sure
+[WARN]  occasionally starts building/vibe coding at 2am, just for some dopamine.
 ```
 
 ### My Tech Stack Proficiency

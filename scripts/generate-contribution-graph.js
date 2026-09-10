@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 /**
- * Generates contribution-graph.svg: an isometric 3D terrain of the last
- * year of GitHub contributions, built entirely from scratch (no
- * third-party rendering action) so the whole pipeline is inspectable.
+ * Generates contribution-graph.svg: an isometric 3D city of the last year
+ * of GitHub contributions, built entirely from scratch (no third-party
+ * rendering action) so the whole pipeline is inspectable. Every day with
+ * commits becomes a building — taller and brighter the busier the day —
+ * and every quiet day stays open park ground, lightly scattered with
+ * trees, a dog, a kid, or a cyclist (see decorationFor() below).
  *
  * Why this replaces .github/workflows/profile-3d-contrib.yml:
  * that workflow authenticated the yoshi389111/github-profile-3d-contrib
@@ -131,36 +134,36 @@ function targetWidth() {
 // see targetWidth() below. It's sized so this SVG always ends up exactly as
 // wide as tech-stack-rings.svg, however many weeks or tech-stack columns
 // either one has, so the two cards line up on the profile page.
-// Half-height : half-width ratio for one tile. Chosen so the finished card's
-// *height* also lands close to tech-stack-rings.svg's height (not just its
-// width) — a shallower iso angle than a "true" 2:1 isometric grid, but it's
-// what keeps 53 weeks x 7 days from rendering as a tall, squarish block next
-// to the tech-stack card's wide, flat one.
-const TILE_ASPECT = 0.22;
-// Zero-contribution days sit perfectly flush with the ground (height 0) so
-// empty stretches read as a calm, continuous flat mat instead of a field of
-// small pillars — only days with real activity rise up as distinct blocks,
-// stepping up from ACTIVE_MIN_H the moment a day has any contributions at
-// all, so "something happened" is visually obvious even for a count of 1.
-// Heights stay small relative to the tile footprint — low ridges on a mat,
-// not skyscrapers — which is what keeps a dense, busy year from reading as
-// a jagged mountain range.
-const ACTIVE_MIN_H = 4;
-const MAX_BAR_H = 15; // height of the single highest-contribution day
+// Half-height : half-width ratio for one tile — how much vertical "depth"
+// each week/weekday step gets. Deliberately taller than the flattest
+// version this script has had, because a city needs headroom: buildings
+// have to read as buildings, and the park decorations need room to stand
+// in front of them without getting crushed into a sliver.
+const TILE_ASPECT = 0.45;
+// Zero-contribution days sit perfectly flush with the ground (height 0) —
+// that's the park, not a building lot — so empty stretches read as open
+// green space instead of a field of small pillars. Only days with real
+// activity rise up as buildings, stepping up from ACTIVE_MIN_H the moment a
+// day has any contributions at all, up to a skyline-topping MAX_BAR_H for
+// the single busiest day.
+const ACTIVE_MIN_H = 14;
+const MAX_BAR_H = 70; // height of the single highest-contribution day's building
 const MARGIN = 24;
 // No title is drawn inside the SVG — the README heading above the image is
 // the only title — so the top margin only needs to clear the tallest bar.
 const LEGEND_H = 44; // space reserved below the terrain for the legend row
 
-// Color ramp mirrors GitHub's own 5-level intensity scale (0 = no
-// contributions .. 4 = highest bucket), but as HSL so we can algebraically
-// darken it for the two shaded cube faces instead of hand-picking 15 hexes.
+// Buildings are shades of glass-blue, not green — green is reserved for the
+// park's trees, so the two never blur into each other. Same idea as
+// GitHub's 5-level intensity scale (0 = no contributions .. 4 = highest
+// bucket), as HSL so the two shaded cube faces per building can be derived
+// algebraically instead of hand-picking 15 hexes.
 const LEVEL_HUES = [
-  { h: 210, s: 14, l: 22 }, // level 0 — empty tile, dark neutral
-  { h: 142, s: 45, l: 30 },
-  { h: 142, s: 55, l: 40 },
-  { h: 142, s: 65, l: 50 },
-  { h: 142, s: 75, l: 60 }, // level 4 — most active days
+  { h: 210, s: 14, l: 22 }, // level 0 — empty lot, unused (park ground uses the .ground CSS class instead)
+  { h: 205, s: 30, l: 35 },
+  { h: 205, s: 45, l: 45 },
+  { h: 205, s: 60, l: 55 },
+  { h: 205, s: 75, l: 65 }, // level 4 — tallest, brightest tower
 ];
 
 function levelFor(count, max) {
@@ -186,6 +189,99 @@ function isoPoint(origin, tile, col, row, z) {
 
 function pointsAttr(pts) {
   return pts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+}
+
+// ---------------------------------------------------------------------
+// Park decorations: every empty (no-contribution) tile is open ground, and
+// a minority of them get a tiny scattered tree, dog, kid, or cyclist —
+// deterministically, seeded from the day's own date string. Same input
+// data always produces the same little scene; it's not reshuffled every
+// time the workflow reruns with unchanged contributions.
+// ---------------------------------------------------------------------
+
+function hashSeed(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+// mulberry32 — a tiny, dependency-free seeded PRNG. Good enough for
+// "scatter some trees," not for anything cryptographic.
+function mulberry32(seed) {
+  let t = seed >>> 0;
+  return function () {
+    t += 0x6d2b79f5;
+    let x = Math.imul(t ^ (t >>> 15), 1 | t);
+    x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x;
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function drawTree(p, rng) {
+  const trunkH = 4 + rng() * 3;
+  const canopyR = 4 + rng() * 2.5;
+  const canopy = [hsl(142, 40, 28), hsl(140, 45, 33), hsl(150, 35, 30)][Math.floor(rng() * 3)];
+  return (
+    `<line x1="${p.x.toFixed(1)}" y1="${p.y.toFixed(1)}" x2="${p.x.toFixed(1)}" y2="${(p.y - trunkH).toFixed(1)}" stroke="#8a5a34" stroke-width="1.6"/>` +
+    `<circle cx="${p.x.toFixed(1)}" cy="${(p.y - trunkH - canopyR * 0.7).toFixed(1)}" r="${canopyR.toFixed(1)}" fill="${canopy}"/>`
+  );
+}
+
+function drawDog(p, rng) {
+  const dir = rng() < 0.5 ? -1 : 1;
+  const body = [hsl(28, 45, 40), hsl(20, 30, 30), hsl(35, 25, 55)][Math.floor(rng() * 3)];
+  return (
+    `<ellipse cx="${p.x.toFixed(1)}" cy="${(p.y - 2.4).toFixed(1)}" rx="4.2" ry="2.2" fill="${body}"/>` +
+    `<circle cx="${(p.x + dir * 4.6).toFixed(1)}" cy="${(p.y - 3.2).toFixed(1)}" r="1.6" fill="${body}"/>` +
+    `<line x1="${(p.x - dir * 4.4).toFixed(1)}" y1="${(p.y - 1.6).toFixed(1)}" x2="${(p.x - dir * 6.6).toFixed(1)}" y2="${(p.y - 4).toFixed(1)}" stroke="${body}" stroke-width="1.2"/>`
+  );
+}
+
+function drawKid(p, rng) {
+  const shirt = [hsl(4, 70, 58), hsl(210, 70, 58), hsl(45, 80, 58), hsl(140, 45, 45)][Math.floor(rng() * 4)];
+  const skin = '#e3ad80';
+  const armSwing = rng() * 2 - 1; // -1..1, so a couple of kids look mid-motion instead of identical
+  return (
+    `<circle cx="${p.x.toFixed(1)}" cy="${(p.y - 8.2).toFixed(1)}" r="1.7" fill="${skin}"/>` +
+    `<line x1="${p.x.toFixed(1)}" y1="${(p.y - 6.6).toFixed(1)}" x2="${p.x.toFixed(1)}" y2="${(p.y - 2).toFixed(1)}" stroke="${shirt}" stroke-width="2.6" stroke-linecap="round"/>` +
+    `<line x1="${(p.x - 2.8 - armSwing).toFixed(1)}" y1="${(p.y - 5.6 + armSwing).toFixed(1)}" x2="${(p.x + 2.8 - armSwing).toFixed(1)}" y2="${(p.y - 5.6 - armSwing).toFixed(1)}" stroke="${shirt}" stroke-width="1.2" stroke-linecap="round"/>` +
+    `<line x1="${(p.x - 1.1).toFixed(1)}" y1="${(p.y - 2).toFixed(1)}" x2="${(p.x - 2).toFixed(1)}" y2="${(p.y + 2.2).toFixed(1)}" stroke="${skin}" stroke-width="1.3" stroke-linecap="round"/>` +
+    `<line x1="${(p.x + 1.1).toFixed(1)}" y1="${(p.y - 2).toFixed(1)}" x2="${(p.x + 2).toFixed(1)}" y2="${(p.y + 2.2).toFixed(1)}" stroke="${skin}" stroke-width="1.3" stroke-linecap="round"/>`
+  );
+}
+
+function drawCyclist(p, rng) {
+  const frame = [hsl(4, 70, 55), hsl(210, 70, 55), hsl(140, 45, 45)][Math.floor(rng() * 3)];
+  const r = 2.6;
+  const y = p.y - r;
+  const x1 = p.x - 3.6;
+  const x2 = p.x + 3.6;
+  return (
+    `<circle cx="${x1.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="none" stroke="${frame}" stroke-width="1"/>` +
+    `<circle cx="${x2.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="none" stroke="${frame}" stroke-width="1"/>` +
+    `<line x1="${x1.toFixed(1)}" y1="${y.toFixed(1)}" x2="${p.x.toFixed(1)}" y2="${(y - 3.2).toFixed(1)}" stroke="${frame}" stroke-width="1"/>` +
+    `<line x1="${x2.toFixed(1)}" y1="${y.toFixed(1)}" x2="${p.x.toFixed(1)}" y2="${(y - 3.2).toFixed(1)}" stroke="${frame}" stroke-width="1"/>` +
+    `<circle cx="${p.x.toFixed(1)}" cy="${(y - 5.2).toFixed(1)}" r="1.4" fill="#e3ad80"/>`
+  );
+}
+
+// Rolls whether an empty tile gets a decoration, and if so, which one and
+// exactly where within the tile — all from one seeded RNG so the result is
+// stable for a given day but varies naturally from tile to tile.
+function decorationFor(origin, tile, col, row, seedKey) {
+  const rng = mulberry32(hashSeed(seedKey));
+  if (rng() > 0.22) return ''; // most of the park stays open lawn — a scattered few, not a crowd
+  const fx = col + 0.25 + rng() * 0.5;
+  const fy = row + 0.25 + rng() * 0.5;
+  const p = isoPoint(origin, tile, fx, fy, 0);
+  const roll = rng();
+  if (roll < 0.5) return drawTree(p, rng);
+  if (roll < 0.68) return drawDog(p, rng);
+  if (roll < 0.86) return drawKid(p, rng);
+  return drawCyclist(p, rng);
 }
 
 function barSvg(origin, tile, col, row, height, level) {
@@ -259,7 +355,11 @@ function render(weeks, totalContributions, login) {
       const row = day.weekday;
       const level = levelFor(day.contributionCount, maxCount);
       const barHeight = day.contributionCount === 0 ? 0 : ACTIVE_MIN_H + (MAX_BAR_H - ACTIVE_MIN_H) * Math.sqrt(day.contributionCount / maxCount);
-      return `<g><title>${day.contributionCount} contribution${day.contributionCount === 1 ? '' : 's'} on ${day.date}</title>${barSvg(origin, tile, col, row, barHeight, level)}</g>`;
+      const building = barSvg(origin, tile, col, row, barHeight, level);
+      // Only empty lots (no contributions that day) are park ground — a
+      // building day stays a building, never gets a tree growing out of it.
+      const park = level === 0 ? decorationFor(origin, tile, col, row, day.date) : '';
+      return `<g><title>${day.contributionCount} contribution${day.contributionCount === 1 ? '' : 's'} on ${day.date}</title>${building}${park}</g>`;
     })
     .join('\n    ');
 
@@ -272,7 +372,7 @@ function render(weeks, totalContributions, login) {
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-labelledby="title desc">
   <title id="title">My Contribution Terrain</title>
-  <desc id="desc">Isometric 3D bar chart of the last year of GitHub contributions for ${login}, ${totalContributions} total. Generated from scratch by scripts/generate-contribution-graph.js.</desc>
+  <desc id="desc">Isometric 3D city of the last year of GitHub contributions for ${login}, ${totalContributions} total — commit days as buildings, quiet days as park ground with scattered trees, dogs, kids, and cyclists. Generated from scratch by scripts/generate-contribution-graph.js.</desc>
   <style>
     /* ---- default: light theme (same tokens as tech-stack-rings.svg) ---- */
     .bg { fill: #ffffff; }

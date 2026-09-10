@@ -108,8 +108,10 @@ Note this script reads `tech-stack.json` too (just to measure the target
 width) — if you're using it standalone, without the tech-stack rings, it
 falls back to a plain 3-column width.
 
-An isometric 3D bar chart of the last year of contributions — one bar per
-day, taller and brighter for more active days.
+An isometric 3D city of the last year of contributions: every day with
+commits is a building — taller and brighter (blue-glass hues) the busier
+the day — and every quiet day stays open park ground, lightly scattered
+with trees, a dog, a kid, or a cyclist.
 
 ### Why not a ready-made GitHub Action
 
@@ -150,38 +152,52 @@ query($login: String!) {
 This returns ~53 weeks × 7 days of `{date, contributionCount}` — the same
 data GitHub's own profile calendar is built from.
 
-**Step 2 — project.** Each day becomes one 3D bar on an isometric grid,
+**Step 2 — project.** Each day becomes one building on an isometric grid,
 positioned by `(week index, weekday)` and extruded upward by
 `sqrt(contributionCount)` (square-root, not linear, so one huge outlier day
-doesn't flatten every other bar to invisibility). Every bar is 3 flat
-polygons — a top face and two shaded side faces — computed by projecting a
-cube's 8 corners with the standard 2:1 isometric formula:
+doesn't dwarf every other building into invisibility). Every building is 3
+flat polygons — a top face and two shaded side faces — computed by
+projecting a cube's 8 corners with the standard isometric formula:
 
 ```
 screenX = originX + (col − row) · halfTileWidth
 screenY = originY + (col + row) · halfTileHeight − height
 ```
 
-Bars are drawn back-to-front (increasing `col + row`) so nearer bars
+Buildings are drawn back-to-front (increasing `col + row`) so nearer ones
 correctly cover farther ones — see `render()` and `barSvg()` in the script
 for the full geometry.
 
 A zero-contribution day gets height 0 and no side walls — just a flat top
-that merges into its neighbors — so a quiet stretch reads as a calm,
-continuous mat instead of a field of small pillars. Only days with real
-activity rise up as distinct blocks.
+that merges into its neighbors — so a quiet stretch reads as open park
+ground instead of a field of small pillars. Only days with real activity
+rise up as buildings.
 
-**Step 3 — match the tech-stack card.** Rather than a fixed pixel size, the
-tile footprint is solved backwards from a target width: it reads
+**Step 2b — populate the park.** Every empty tile is a candidate park lot.
+`decorationFor()` seeds a tiny PRNG (`mulberry32`, hand-rolled — no
+dependency) from the day's own date string, so the same day always gets the
+same result: about 1 in 5 empty tiles gets a tree, dog, kid, or cyclist
+(each a handful of `<circle>`/`<line>` shapes, not an image asset), placed
+at a randomized point inside the tile. The other 4 in 5 stay open lawn —
+enough scattered life to feel lived-in without turning the whole park into
+clutter. Because the seed is the date, not `Math.random()`, regenerating the
+same data twice draws the same tiny scene both times; only new dates
+introduce new trees and passersby.
+
+**Step 3 — match the tech-stack card's width.** Rather than a fixed pixel
+size, the tile footprint is solved backwards from a target width: it reads
 `tech-stack.json` via `scripts/layout-config.js`'s shared `COLUMN_WIDTH` to
 compute exactly what width `generate-tech-stack-svg.js` would produce for
 the current column count, then picks `halfW` so `2·MARGIN + (weeks +
-7)·halfW` equals that number. The two SVGs are always the same width, no
+7)·halfW` equals that number. The two SVGs are always the same *width*, no
 matter how many weeks GitHub returns or how many tech-stack columns you
-have. The card background, border, and empty-day ("ground") color also use
-the exact same light/dark tokens as `tech-stack-rings.svg`, so both cards
-look like one consistent design system rather than two separately-themed
-widgets.
+have. Height is intentionally not matched the same way — `TILE_ASPECT`,
+`ACTIVE_MIN_H`, and `MAX_BAR_H` set how much vertical room the city gets to
+actually look like a skyline with a park around it, so the contribution
+card ends up taller than the rings card. The card background, border, and
+empty-lot ("ground") color still use the exact same light/dark tokens as
+`tech-stack-rings.svg`, so the two remain one consistent design system
+despite the difference in height.
 
 ### Getting a token — read access only
 
