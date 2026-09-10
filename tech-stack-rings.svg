@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" width="960" height="400" role="img" aria-labelledby="title desc">
+  <title id="title">Tech Stack Proficiency Rings</title>
+  <desc id="desc">Concentric ring chart: Frontend (React 90%, Angular 50%), Backend (Python 85%, Django 75%, FastAPI 70%), Data &amp; Storage (PostgreSQL 80%, S3 65%)</desc>
+  <style>
+    /* ---- default: light theme ---- */
+    .bg   { fill: #ffffff; }
+    .card-border { stroke: #d0d7de; }
+    .title { fill: #1f2328; }
+    .col-label { fill: #1f2328; }
+    .track { stroke: #eaeef2; }
+    .legend-text { fill: #1f2328; }
+    .legend-pct { fill: #57606a; }
+
+    /* ---- dark theme override ---- */
+    @media (prefers-color-scheme: dark) {
+      .bg   { fill: #0d1117; }
+      .card-border { stroke: #30363d; }
+      .title { fill: #e6edf3; }
+      .col-label { fill: #c9d1d9; }
+      .track { stroke: #21262d; }
+      .legend-text { fill: #c9d1d9; }
+      .legend-pct { fill: #8b949e; }
+    }
+
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .title { font-size: 26px; font-weight: 700; }
+    .col-label { font-size: 15px; font-weight: 600; }
+    .legend-text { font-size: 14px; font-weight: 600; }
+    .legend-pct { font-size: 13px; font-weight: 500; }
+    .ring-track { fill: none; }
+    .ring-progress { fill: none; stroke-linecap: round; }
+  </style>
+
+  <rect class="bg card-border" x="1" y="1" width="958" height="398" rx="16" stroke-width="1.5"/>
+
+  <text class="title" x="480" y="42" text-anchor="middle">🛠️ Tech Stack Proficiency</text>
+
+  <!-- ===================== Frontend ===================== -->
+  <g>
+    <text class="col-label" x="160" y="88" text-anchor="middle">Frontend</text>
+    <g transform="rotate(-90 160 178)">
+      <!-- React 90% -->
+      <circle class="ring-track track" cx="160" cy="178" r="70" stroke-width="14"/>
+      <circle class="ring-progress" cx="160" cy="178" r="70" stroke-width="14"
+              stroke="#22C1DC" stroke-dasharray="395.84 439.82"/>
+      <!-- Angular 50% -->
+      <circle class="ring-track track" cx="160" cy="178" r="52" stroke-width="14"/>
+      <circle class="ring-progress" cx="160" cy="178" r="52" stroke-width="14"
+              stroke="#E5484D" stroke-dasharray="163.36 326.73"/>
+    </g>
+    <g font-size="14">
+      <circle cx="55" cy="266" r="5" fill="#22C1DC"/>
+      <text class="legend-text" x="66" y="270">React <tspan class="legend-pct">90%</tspan></text>
+      <circle cx="55" cy="288" r="5" fill="#E5484D"/>
+      <text class="legend-text" x="66" y="292">Angular <tspan class="legend-pct">50%</tspan></text>
+    </g>
+  </g>
+
+  <!-- ===================== Backend ===================== -->
+  <g>
+    <text class="col-label" x="480" y="88" text-anchor="middle">Backend</text>
+    <g transform="rotate(-90 480 178)">
+      <!-- Python 85% -->
+      <circle class="ring-track track" cx="480" cy="178" r="74" stroke-width="11"/>
+      <circle class="ring-progress" cx="480" cy="178" r="74" stroke-width="11"
+              stroke="#3B82C4" stroke-dasharray="395.21 464.96"/>
+      <!-- Django 75% -->
+      <circle class="ring-track track" cx="480" cy="178" r="58" stroke-width="11"/>
+      <circle class="ring-progress" cx="480" cy="178" r="58" stroke-width="11"
+              stroke="#2FA76A" stroke-dasharray="273.32 364.42"/>
+      <!-- FastAPI 70% -->
+      <circle class="ring-track track" cx="480" cy="178" r="42" stroke-width="11"/>
+      <circle class="ring-progress" cx="480" cy="178" r="42" stroke-width="11"
+              stroke="#14B8A6" stroke-dasharray="184.73 263.89"/>
+    </g>
+    <g font-size="14">
+      <circle cx="395" cy="260" r="5" fill="#3B82C4"/>
+      <text class="legend-text" x="406" y="264">Python <tspan class="legend-pct">85%</tspan></text>
+      <circle cx="395" cy="282" r="5" fill="#2FA76A"/>
+      <text class="legend-text" x="406" y="286">Django <tspan class="legend-pct">75%</tspan></text>
+      <circle cx="395" cy="304" r="5" fill="#14B8A6"/>
+      <text class="legend-text" x="406" y="308">FastAPI <tspan class="legend-pct">70%</tspan></text>
+    </g>
+  </g>
+
+  <!-- ===================== Data & Storage ===================== -->
+  <g>
+    <text class="col-label" x="800" y="88" text-anchor="middle">Data &amp; Storage</text>
+    <g transform="rotate(-90 800 178)">
+      <!-- PostgreSQL 80% -->
+      <circle class="ring-track track" cx="800" cy="178" r="70" stroke-width="14"/>
+      <circle class="ring-progress" cx="800" cy="178" r="70" stroke-width="14"
+              stroke="#6366F1" stroke-dasharray="351.86 439.82"/>
+      <!-- S3 65% -->
+      <circle class="ring-track track" cx="800" cy="178" r="52" stroke-width="14"/>
+      <circle class="ring-progress" cx="800" cy="178" r="52" stroke-width="14"
+              stroke="#F59E0B" stroke-dasharray="212.37 326.73"/>
+    </g>
+    <g font-size="14">
+      <circle cx="695" cy="266" r="5" fill="#6366F1"/>
+      <text class="legend-text" x="706" y="270">PostgreSQL <tspan class="legend-pct">80%</tspan></text>
+      <circle cx="695" cy="288" r="5" fill="#F59E0B"/>
+      <text class="legend-text" x="706" y="292">S3 <tspan class="legend-pct">65%</tspan></text>
+    </g>
+  </g>
+</svg>
