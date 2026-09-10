@@ -199,6 +199,27 @@ empty-lot ("ground") color still use the exact same light/dark tokens as
 `tech-stack-rings.svg`, so the two remain one consistent design system
 despite the difference in height.
 
+**Step 4 — grow on load.** Buildings don't just appear; each one rises from
+ground level in a short (0.9s), staggered animation the first time the page
+renders. This is done with SMIL `<animate>` on each polygon's `points`
+attribute — not a CSS `transform: scaleY`, because an isometric diamond's 4
+corners each sit at a different baseline screen-Y, so a single scale anchor
+can't reproduce the shape correctly at every in-between frame. Since every
+point is a linear function of height (`isoPoint`'s `y = ... − z`), linearly
+interpolating the raw coordinates from their height-0 state to their final
+state via SMIL reproduces the exact geometry throughout, not an
+approximation. Each building's `begin=` delay is its index in the
+already-back-to-front painter's-order list × `GROW_STAGGER_S`, so the grow-in
+reads as a wave sweeping across the skyline in the same direction the tiles
+are drawn.
+
+SMIL animations (like CSS animations, unlike JS or `:hover`) autoplay fine
+even though GitHub renders this SVG as a plain `<img>` — there's no
+JavaScript involved and nothing needs to be interactive, it just needs to
+start on its own. `fill="freeze"` holds the final frame afterward rather
+than looping, and the whole sweep finishes in a few seconds so it reads as
+a one-time flourish, not a persistent distraction.
+
 ### Getting a token — read access only
 
 The script needs to read your contribution calendar; it never needs to write

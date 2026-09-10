@@ -151,7 +151,10 @@ const MAX_BAR_H = 70; // height of the single highest-contribution day's buildin
 const MARGIN = 24;
 // No title is drawn inside the SVG — the README heading above the image is
 // the only title — so the top margin only needs to clear the tallest bar.
-const LEGEND_H = 44; // space reserved below the terrain for the legend row
+const LEGEND_H = 58; // space reserved below the terrain for the legend row
+const LEGEND_SWATCH = 22; // px, up from 16 — matches tech-stack-rings.svg's legend text scale better
+const LEGEND_GAP = 34; // px between swatch starts
+const LEGEND_FONT = 14; // px, up from 12
 
 // Buildings are shades of glass-blue, not green — green is reserved for the
 // park's trees, so the two never blur into each other. Same idea as
@@ -284,37 +287,65 @@ function decorationFor(origin, tile, col, row, seedKey) {
   return drawCyclist(p, rng);
 }
 
-function barSvg(origin, tile, col, row, height, level) {
+// How long one building takes to rise, and how much later each successive
+// building (in back-to-front painter's order) starts — a small stagger
+// across ~370 tiles reads as a wave sweeping across the skyline instead of
+// the whole city popping up at once. Both are deliberately short: this is a
+// one-time flourish on page load, not a looping animation, so it settles
+// down quickly rather than lingering as a distraction.
+const GROW_DURATION_S = 0.9;
+const GROW_STAGGER_S = 0.012;
+
+function barSvg(origin, tile, col, row, height, level, delaySec) {
   const top = LEVEL_HUES[level];
   const A = isoPoint(origin, tile, col, row, height);
   const B = isoPoint(origin, tile, col + 1, row, height);
   const C = isoPoint(origin, tile, col + 1, row + 1, height);
   const D = isoPoint(origin, tile, col, row + 1, height);
-  // Level 0 (no contributions) uses the theme-aware "ground" class instead
-  // of a hard-coded color, so the empty mat matches the viewer's light/dark
-  // theme the same way tech-stack-rings.svg's track rings do.
-  const topFace =
-    level === 0
-      ? `<polygon points="${pointsAttr([A, B, C, D])}" class="ground"/>`
-      : `<polygon points="${pointsAttr([A, B, C, D])}" fill="${hsl(top.h, top.s, top.l)}"/>`;
-
-  // A zero-contribution day is flush with the ground (height 0) — draw only
-  // its flat top so it merges into the surrounding mat instead of getting a
-  // visible pillar outline. Only days that actually rose above the ground
-  // get side walls.
-  if (height <= 0) return topFace;
-
-  // Shade the two side faces relative to the top face so intensity level
-  // still reads correctly, without hand-authoring 15 separate colors.
-  const leftFace = hsl(top.h, top.s, Math.max(6, top.l - 12));
-  const rightFace = hsl(top.h, top.s, Math.max(4, top.l - 22));
+  const A0 = isoPoint(origin, tile, col, row, 0);
+  const B0 = isoPoint(origin, tile, col + 1, row, 0);
   const C0 = isoPoint(origin, tile, col + 1, row + 1, 0);
   const D0 = isoPoint(origin, tile, col, row + 1, 0);
 
+  // Level 0 (no contributions) uses the theme-aware "ground" class instead
+  // of a hard-coded color, so the empty mat matches the viewer's light/dark
+  // theme the same way tech-stack-rings.svg's track rings do. Park ground
+  // doesn't grow — only buildings do.
+  if (level === 0) {
+    return `<polygon points="${pointsAttr([A0, B0, C0, D0])}" class="ground"/>`;
+  }
+
+  // Growth is animated by moving the actual polygon points, not a CSS
+  // transform: each corner of an isometric diamond sits at a different
+  // baseline screen-Y (the tile "wobbles" up and down across its 4
+  // corners), so a single scaleY anchor can't reproduce it correctly. But
+  // every point here is an affine (linear) function of height — isoPoint's
+  // `y = ... - z` — so linearly interpolating the raw point coordinates
+  // from their height=0 state to their final-height state via SMIL
+  // reproduces the exact in-between shape at every animation frame, not an
+  // approximation. SMIL <animate> (unlike CSS transitions) can animate an
+  // SVG `points` attribute directly, and — like CSS animations — it
+  // autoplays fine even when this SVG is loaded as a plain <img>, which is
+  // how GitHub renders markdown images (no JS, no hover state, but
+  // animations that start on their own do run).
+  const fill = hsl(top.h, top.s, top.l);
+  const leftFace = hsl(top.h, top.s, Math.max(6, top.l - 12));
+  const rightFace = hsl(top.h, top.s, Math.max(4, top.l - 22));
+
+  const grow = (fromPts, toPts) =>
+    `<animate attributeName="points" from="${fromPts}" to="${toPts}" begin="${delaySec.toFixed(3)}s" dur="${GROW_DURATION_S}s" fill="freeze" calcMode="spline" keySplines="0.22 1 0.36 1"/>`;
+
+  const flatTop = pointsAttr([A0, B0, C0, D0]);
+  const fullTop = pointsAttr([A, B, C, D]);
+  const flatLeft = pointsAttr([D0, C0, C0, D0]);
+  const fullLeft = pointsAttr([D, C, C0, D0]);
+  const flatRight = pointsAttr([B0, C0, C0, B0]);
+  const fullRight = pointsAttr([B, C, C0, isoPoint(origin, tile, col + 1, row, 0)]);
+
   return (
-    topFace +
-    `<polygon points="${pointsAttr([D, C, C0, D0])}" fill="${leftFace}"/>` +
-    `<polygon points="${pointsAttr([B, C, C0, isoPoint(origin, tile, col + 1, row, 0)])}" fill="${rightFace}"/>`
+    `<polygon points="${flatTop}" fill="${fill}">${grow(flatTop, fullTop)}</polygon>` +
+    `<polygon points="${flatLeft}" fill="${leftFace}">${grow(flatLeft, fullLeft)}</polygon>` +
+    `<polygon points="${flatRight}" fill="${rightFace}">${grow(flatRight, fullRight)}</polygon>`
   );
 }
 
@@ -349,13 +380,16 @@ function render(weeks, totalContributions, login) {
   });
 
   const bars = ordered
-    .map((day) => {
+    .map((day, i) => {
       const week = weeks.find((w) => w.contributionDays.includes(day));
       const col = weeks.indexOf(week);
       const row = day.weekday;
       const level = levelFor(day.contributionCount, maxCount);
       const barHeight = day.contributionCount === 0 ? 0 : ACTIVE_MIN_H + (MAX_BAR_H - ACTIVE_MIN_H) * Math.sqrt(day.contributionCount / maxCount);
-      const building = barSvg(origin, tile, col, row, barHeight, level);
+      // Stagger by painter's-order index (already back-to-front), so the
+      // grow-in reads as a wave sweeping across the skyline in the same
+      // direction the tiles are drawn, rather than random popcorn.
+      const building = barSvg(origin, tile, col, row, barHeight, level, i * GROW_STAGGER_S);
       // Only empty lots (no contributions that day) are park ground — a
       // building day stays a building, never gets a tree growing out of it.
       const park = level === 0 ? decorationFor(origin, tile, col, row, day.date) : '';
@@ -363,11 +397,13 @@ function render(weeks, totalContributions, login) {
     })
     .join('\n    ');
 
-  const legendY = terrainBottom + 20;
+  const legendY = terrainBottom + 22;
+  const legendTextY = legendY + LEGEND_SWATCH / 2 + LEGEND_FONT * 0.35; // vertically centers the text against the swatch row
+  const legendSwatchesX = MARGIN + 48;
   const legend = LEVEL_HUES.map((c, i) =>
     i === 0
-      ? `<rect x="${MARGIN + 36}" y="${legendY}" width="16" height="16" rx="3" class="ground"/>`
-      : `<rect x="${MARGIN + 36 + i * 26}" y="${legendY}" width="16" height="16" rx="3" fill="${hsl(c.h, c.s, c.l)}"/>`
+      ? `<rect x="${legendSwatchesX}" y="${legendY}" width="${LEGEND_SWATCH}" height="${LEGEND_SWATCH}" rx="4" class="ground"/>`
+      : `<rect x="${legendSwatchesX + i * LEGEND_GAP}" y="${legendY}" width="${LEGEND_SWATCH}" height="${LEGEND_SWATCH}" rx="4" fill="${hsl(c.h, c.s, c.l)}"/>`
   ).join('');
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-labelledby="title desc">
@@ -378,7 +414,7 @@ function render(weeks, totalContributions, login) {
     .bg { fill: #ffffff; }
     .card-border { stroke: #d0d7de; }
     .ground { fill: #eaeef2; }
-    .legend-label { fill: #57606a; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; }
+    .legend-label { fill: #57606a; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: ${LEGEND_FONT}px; font-weight: 500; }
 
     /* ---- dark theme override ---- */
     @media (prefers-color-scheme: dark) {
@@ -392,9 +428,9 @@ function render(weeks, totalContributions, login) {
   <g>
     ${bars}
   </g>
-  <text class="legend-label" x="${MARGIN}" y="${legendY + 13}">Less</text>
+  <text class="legend-label" x="${MARGIN}" y="${legendTextY}">Less</text>
   ${legend}
-  <text class="legend-label" x="${MARGIN + 36 + LEVEL_HUES.length * 26 + 6}" y="${legendY + 13}">More</text>
+  <text class="legend-label" x="${legendSwatchesX + LEVEL_HUES.length * LEGEND_GAP + 8}" y="${legendTextY}">More</text>
 </svg>
 `;
 }
