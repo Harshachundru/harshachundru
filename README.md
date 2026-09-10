@@ -17,7 +17,7 @@ pct / 100. Update the matching legend entry's text alongside it.
 
 ### 📊 My GitHub Contribution Graph (3D)
 
-![3D contribution graph](./profile-3d-contrib/profile-season-animate.svg)
+![3D contribution graph](./profile-3d-contrib/profile-night-view.svg)
 
 <!--
 Generated nightly by .github/workflows/profile-3d-contrib.yml via yoshi389111/github-profile-3d-contrib.
