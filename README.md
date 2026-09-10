@@ -14,3 +14,14 @@ Here are some ideas to get you started:
 - 😄 Pronouns: ...
 - ⚡ Fun fact: ...
 -->
+
+### 📊 My GitHub Contribution Graph
+
+![3D contribution graph](./profile-3d-contrib/profile-season-animate.svg)
+
+<!--
+Generated nightly by .github/workflows/profile-3d-contrib.yml via yoshi389111/github-profile-3d-contrib.
+Other available renders once the workflow has run at least once:
+  profile-green-animate.svg, profile-night-view.svg, profile-night-green.svg,
+  profile-night-rainbow.svg, profile-gitblock.svg (all under ./profile-3d-contrib/)
+-->
