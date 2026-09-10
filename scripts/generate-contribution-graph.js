@@ -32,9 +32,11 @@
 const fs = require('fs');
 const https = require('https');
 const path = require('path');
+const { COLUMN_WIDTH } = require('./layout-config');
 
 const ROOT = path.resolve(__dirname, '..');
 const OUT_PATH = path.join(ROOT, 'contribution-graph.svg');
+const TECH_STACK_DATA_PATH = path.join(ROOT, 'tech-stack.json');
 
 const TOKEN = process.env.CONTRIB_TOKEN;
 const LOGIN = process.env.GITHUB_LOGIN || process.env.GITHUB_REPOSITORY_OWNER;
@@ -105,6 +107,19 @@ function graphqlRequest(query, variables) {
   });
 }
 
+// Width this SVG should render at: the same width tech-stack-rings.svg
+// would generate for its current column count, so the two cards match on
+// the profile page. Falls back to a plain 3-column width if tech-stack.json
+// is missing (e.g. this script gets reused in a repo without that file).
+function targetWidth() {
+  try {
+    const data = JSON.parse(fs.readFileSync(TECH_STACK_DATA_PATH, 'utf8'));
+    return data.columns.length * COLUMN_WIDTH;
+  } catch {
+    return 3 * COLUMN_WIDTH;
+  }
+}
+
 // ---------------------------------------------------------------------
 // Step 2: project each day onto an isometric grid and extrude it into a
 // 3D bar whose height encodes contribution count. Pure geometry, no
@@ -112,12 +127,24 @@ function graphqlRequest(query, variables) {
 // hand-computed polygon.
 // ---------------------------------------------------------------------
 
-const HALF_W = 9; // iso x-offset per grid step (column - row)
-const HALF_H = 5; // iso y-offset per grid step (column + row)
-const MIN_BAR_H = 3; // floor height for a zero-contribution day, so the grid stays visible
-const MAX_BAR_H = 46; // height of the single highest-contribution day
+// Tile footprint (HALF_W/HALF_H) is derived at render time, not fixed here —
+// see targetWidth() below. It's sized so this SVG always ends up exactly as
+// wide as tech-stack-rings.svg, however many weeks or tech-stack columns
+// either one has, so the two cards line up on the profile page.
+const TILE_ASPECT = 6.5 / 11; // half-height : half-width ratio to preserve whatever the absolute tile size ends up being
+// Zero-contribution days sit perfectly flush with the ground (height 0) so
+// empty stretches read as a calm, continuous flat mat instead of a field of
+// small pillars — only days with real activity rise up as distinct blocks,
+// stepping up from ACTIVE_MIN_H the moment a day has any contributions at
+// all, so "something happened" is visually obvious even for a count of 1.
+// Heights stay small relative to the tile footprint — low ridges on a mat,
+// not skyscrapers — which is what keeps a dense, busy year from reading as
+// a jagged mountain range.
+const ACTIVE_MIN_H = 4;
+const MAX_BAR_H = 15; // height of the single highest-contribution day
 const MARGIN = 24;
-const HEADER_H = 64; // space reserved above the terrain for title/subtitle
+// No title is drawn inside the SVG — the README heading above the image is
+// the only title — so the top margin only needs to clear the tallest bar.
 const LEGEND_H = 44; // space reserved below the terrain for the legend row
 
 // Color ramp mirrors GitHub's own 5-level intensity scale (0 = no
@@ -145,10 +172,10 @@ function hsl(h, s, l) {
   return `hsl(${h.toFixed(0)} ${s.toFixed(0)}% ${l.toFixed(0)}%)`;
 }
 
-function isoPoint(origin, col, row, z) {
+function isoPoint(origin, tile, col, row, z) {
   return {
-    x: origin.x + (col - row) * HALF_W,
-    y: origin.y + (col + row) * HALF_H - z,
+    x: origin.x + (col - row) * tile.halfW,
+    y: origin.y + (col + row) * tile.halfH - z,
   };
 }
 
@@ -156,24 +183,37 @@ function pointsAttr(pts) {
   return pts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
 }
 
-function barSvg(origin, col, row, height, level) {
+function barSvg(origin, tile, col, row, height, level) {
   const top = LEVEL_HUES[level];
+  const A = isoPoint(origin, tile, col, row, height);
+  const B = isoPoint(origin, tile, col + 1, row, height);
+  const C = isoPoint(origin, tile, col + 1, row + 1, height);
+  const D = isoPoint(origin, tile, col, row + 1, height);
+  // Level 0 (no contributions) uses the theme-aware "ground" class instead
+  // of a hard-coded color, so the empty mat matches the viewer's light/dark
+  // theme the same way tech-stack-rings.svg's track rings do.
+  const topFace =
+    level === 0
+      ? `<polygon points="${pointsAttr([A, B, C, D])}" class="ground"/>`
+      : `<polygon points="${pointsAttr([A, B, C, D])}" fill="${hsl(top.h, top.s, top.l)}"/>`;
+
+  // A zero-contribution day is flush with the ground (height 0) — draw only
+  // its flat top so it merges into the surrounding mat instead of getting a
+  // visible pillar outline. Only days that actually rose above the ground
+  // get side walls.
+  if (height <= 0) return topFace;
+
   // Shade the two side faces relative to the top face so intensity level
   // still reads correctly, without hand-authoring 15 separate colors.
   const leftFace = hsl(top.h, top.s, Math.max(6, top.l - 12));
   const rightFace = hsl(top.h, top.s, Math.max(4, top.l - 22));
-
-  const A = isoPoint(origin, col, row, height);
-  const B = isoPoint(origin, col + 1, row, height);
-  const C = isoPoint(origin, col + 1, row + 1, height);
-  const D = isoPoint(origin, col, row + 1, height);
-  const C0 = isoPoint(origin, col + 1, row + 1, 0);
-  const D0 = isoPoint(origin, col, row + 1, 0);
+  const C0 = isoPoint(origin, tile, col + 1, row + 1, 0);
+  const D0 = isoPoint(origin, tile, col, row + 1, 0);
 
   return (
-    `<polygon points="${pointsAttr([A, B, C, D])}" fill="${hsl(top.h, top.s, top.l)}"/>` +
+    topFace +
     `<polygon points="${pointsAttr([D, C, C0, D0])}" fill="${leftFace}"/>` +
-    `<polygon points="${pointsAttr([B, C, C0, isoPoint(origin, col + 1, row, 0)])}" fill="${rightFace}"/>`
+    `<polygon points="${pointsAttr([B, C, C0, isoPoint(origin, tile, col + 1, row, 0)])}" fill="${rightFace}"/>`
   );
 }
 
@@ -183,13 +223,20 @@ function render(weeks, totalContributions, login) {
   const numCols = weeks.length;
   const numRows = 7;
 
+  // Solve for a tile footprint that makes this SVG exactly as wide as
+  // tech-stack-rings.svg currently renders (see targetWidth()), instead of
+  // using a fixed pixel size — so the two cards always match, regardless of
+  // how many weeks GitHub returns or how many tech-stack columns exist.
+  const width = targetWidth();
+  const halfW = (width - 2 * MARGIN) / (numCols + numRows);
+  const tile = { halfW, halfH: halfW * TILE_ASPECT };
+
   // Canvas is sized to exactly fit the projected terrain — leftmost bar
   // corner lands at x=MARGIN, topmost (tallest) bar top lands at
-  // y=HEADER_H, and the deepest bottom-right corner lands right before
-  // the legend row. No fixed canvas size, so any number of weeks fits.
-  const origin = { x: MARGIN + numRows * HALF_W, y: HEADER_H + MAX_BAR_H };
-  const width = origin.x + numCols * HALF_W + MARGIN;
-  const terrainBottom = origin.y + (numCols + numRows) * HALF_H;
+  // y=MARGIN, and the deepest bottom-right corner lands right before the
+  // legend row.
+  const origin = { x: MARGIN + numRows * tile.halfW, y: MARGIN + MAX_BAR_H };
+  const terrainBottom = origin.y + (numCols + numRows) * tile.halfH;
   const height = terrainBottom + LEGEND_H;
 
   // Draw back-to-front (by col+row) so nearer bars correctly occlude
@@ -206,29 +253,37 @@ function render(weeks, totalContributions, login) {
       const col = weeks.indexOf(week);
       const row = day.weekday;
       const level = levelFor(day.contributionCount, maxCount);
-      const height = day.contributionCount === 0 ? MIN_BAR_H : MIN_BAR_H + (MAX_BAR_H - MIN_BAR_H) * Math.sqrt(day.contributionCount / maxCount);
-      return `<g><title>${day.contributionCount} contribution${day.contributionCount === 1 ? '' : 's'} on ${day.date}</title>${barSvg(origin, col, row, height, level)}</g>`;
+      const barHeight = day.contributionCount === 0 ? 0 : ACTIVE_MIN_H + (MAX_BAR_H - ACTIVE_MIN_H) * Math.sqrt(day.contributionCount / maxCount);
+      return `<g><title>${day.contributionCount} contribution${day.contributionCount === 1 ? '' : 's'} on ${day.date}</title>${barSvg(origin, tile, col, row, barHeight, level)}</g>`;
     })
     .join('\n    ');
 
   const legendY = terrainBottom + 20;
-  const legend = LEVEL_HUES.map(
-    (c, i) => `<rect x="${MARGIN + 36 + i * 26}" y="${legendY}" width="16" height="16" rx="3" fill="${hsl(c.h, c.s, c.l)}"/>`
+  const legend = LEVEL_HUES.map((c, i) =>
+    i === 0
+      ? `<rect x="${MARGIN + 36}" y="${legendY}" width="16" height="16" rx="3" class="ground"/>`
+      : `<rect x="${MARGIN + 36 + i * 26}" y="${legendY}" width="16" height="16" rx="3" fill="${hsl(c.h, c.s, c.l)}"/>`
   ).join('');
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-labelledby="title desc">
-  <title id="title">${login}'s GitHub contribution terrain</title>
-  <desc id="desc">Isometric 3D bar chart of the last year of GitHub contributions, ${totalContributions} total. Generated from scratch by scripts/generate-contribution-graph.js.</desc>
+  <title id="title">My Contribution Terrain</title>
+  <desc id="desc">Isometric 3D bar chart of the last year of GitHub contributions for ${login}, ${totalContributions} total. Generated from scratch by scripts/generate-contribution-graph.js.</desc>
   <style>
-    .bg { fill: #0d1117; }
-    .card-border { stroke: #30363d; }
-    .title { fill: #e6edf3; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 22px; font-weight: 700; }
-    .sub { fill: #8b949e; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 13px; }
-    .legend-label { fill: #8b949e; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; }
+    /* ---- default: light theme (same tokens as tech-stack-rings.svg) ---- */
+    .bg { fill: #ffffff; }
+    .card-border { stroke: #d0d7de; }
+    .ground { fill: #eaeef2; }
+    .legend-label { fill: #57606a; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; }
+
+    /* ---- dark theme override ---- */
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #0d1117; }
+      .card-border { stroke: #30363d; }
+      .ground { fill: #21262d; }
+      .legend-label { fill: #8b949e; }
+    }
   </style>
   <rect class="bg card-border" x="1" y="1" width="${width - 2}" height="${height - 2}" rx="16" stroke-width="1.5"/>
-  <text class="title" x="${MARGIN}" y="36">${login}'s Contribution Terrain</text>
-  <text class="sub" x="${MARGIN}" y="56">${totalContributions} contributions in the last year</text>
   <g>
     ${bars}
   </g>

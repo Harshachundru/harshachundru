@@ -9,7 +9,10 @@
  * re-run (or push, see .github/workflows/tech-stack-rings.yml).
  *
  * Layout rules (kept consistent across columns, regardless of skill count):
- *   - Columns are spaced 320px apart, each ring-stack centered at cy=182.
+ *   - Columns are spaced COLUMN_WIDTH apart (see layout-config.js — shared
+ *     with generate-contribution-graph.js so both SVGs match in width),
+ *     each ring-stack centered at cy=134. No title is drawn in the SVG
+ *     itself; the README heading above the image is the only title.
  *   - Rings span a fixed radius band (80 -> 20) subdivided evenly by skill
  *     count, ordered outermost -> innermost per the source array (put the
  *     most foundational skill first).
@@ -26,19 +29,22 @@
 
 const fs = require('fs');
 const path = require('path');
+const { COLUMN_WIDTH } = require('./layout-config');
 
 const ROOT = path.resolve(__dirname, '..');
 const DATA_PATH = path.join(ROOT, 'tech-stack.json');
 const OUT_PATH = path.join(ROOT, 'tech-stack-rings.svg');
 
-const COLUMN_WIDTH = 320;
 const OUTER_R = 80;
 const INNER_R = 20;
-const CY = 182;
-const LABEL_Y = 88;
-const LEGEND_TOP = 286; // y of first legend dot (cy + 104)
+// No title is drawn inside the SVG — the README heading above the image is
+// the only title, so the card opens straight into the column labels instead
+// of wasting ~50px on a heading that would just repeat it.
+const CY = 134;
+const LABEL_Y = 40;
+const LEGEND_TOP = 238; // y of first legend dot (cy + 104)
 const LEGEND_ROW_H = 22;
-const CARD_MIN_HEIGHT = 400;
+const CARD_MIN_HEIGHT = 352;
 const CARD_PAD_BOTTOM = 26;
 
 const IDEAL_STEP = 14; // natural spacing for uncrowded columns (matches original hand-authored rings)
@@ -140,13 +146,12 @@ function generate(data) {
   const columnBlocks = columns.map((col, i) => buildColumnSvg(col, i, COLUMN_WIDTH / 2 + i * COLUMN_WIDTH).markup).join('\n\n');
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-labelledby="title desc">
-  <title id="title">Tech Stack Proficiency Rings</title>
+  <title id="title">My Tech Stack Proficiency</title>
   <desc id="desc">${esc(buildDesc(columns))}</desc>
   <style>
     /* ---- default: light theme ---- */
     .bg   { fill: #ffffff; }
     .card-border { stroke: #d0d7de; }
-    .title { fill: #1f2328; }
     .col-label { fill: #1f2328; }
     .track { stroke: #eaeef2; }
     .legend-text { fill: #1f2328; }
@@ -156,7 +161,6 @@ function generate(data) {
     @media (prefers-color-scheme: dark) {
       .bg   { fill: #0d1117; }
       .card-border { stroke: #30363d; }
-      .title { fill: #e6edf3; }
       .col-label { fill: #c9d1d9; }
       .track { stroke: #21262d; }
       .legend-text { fill: #c9d1d9; }
@@ -164,7 +168,6 @@ function generate(data) {
     }
 
     text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
-    .title { font-size: 26px; font-weight: 700; }
     .col-label { font-size: 15px; font-weight: 600; }
     .legend-text { font-size: 13.5px; font-weight: 600; }
     .legend-pct { font-size: 12.5px; font-weight: 500; }
@@ -173,8 +176,6 @@ function generate(data) {
   </style>
 
   <rect class="bg card-border" x="1" y="1" width="${width - 2}" height="${height - 2}" rx="16" stroke-width="1.5"/>
-
-  <text class="title" x="${width / 2}" y="42" text-anchor="middle">🛠️ Tech Stack Proficiency</text>
 
 ${columnBlocks}
 </svg>

@@ -67,9 +67,14 @@ does that instead:
 - **Legend layout** — 3 or fewer skills get one centered column; more than
   that splits into two columns (first half left, second half right),
   auto-computing how many rows are needed.
-- **Canvas size** — width scales with the number of columns (320px each);
-  height grows only if a column's legend needs more rows than the default
-  card fits.
+- **Canvas size** — width scales with the number of columns (`COLUMN_WIDTH`,
+  320px each, defined once in `scripts/layout-config.js` and shared with the
+  contribution-graph generator — see below); height grows only if a
+  column's legend needs more rows than the default card fits.
+- **No title inside the SVG** — the README heading above the image is the
+  only title. Baking a second one into the image would just repeat it, and
+  it would go stale if you ever changed the heading without touching the
+  script.
 
 ### Workflow
 
@@ -81,9 +86,9 @@ secret needed, since it never touches your GitHub account data.
 
 ### To use this on your own profile
 
-1. Copy `tech-stack.json`, `scripts/generate-tech-stack-svg.js`, and
-   `.github/workflows/tech-stack-rings.yml` into your `<username>/<username>`
-   repo.
+1. Copy `tech-stack.json`, `scripts/generate-tech-stack-svg.js`,
+   `scripts/layout-config.js`, and `.github/workflows/tech-stack-rings.yml`
+   into your `<username>/<username>` repo.
 2. Edit `tech-stack.json` with your own columns/skills/percentages/colors.
 3. Add `![Tech stack proficiency rings](./tech-stack-rings.svg)` to your
    `README.md`.
@@ -96,7 +101,12 @@ secret needed, since it never touches your GitHub account data.
 
 **Files:**
 [`scripts/generate-contribution-graph.js`](../scripts/generate-contribution-graph.js) ·
+[`scripts/layout-config.js`](../scripts/layout-config.js) ·
 [`.github/workflows/contribution-graph.yml`](../.github/workflows/contribution-graph.yml)
+
+Note this script reads `tech-stack.json` too (just to measure the target
+width) — if you're using it standalone, without the tech-stack rings, it
+falls back to a plain 3-column width.
 
 An isometric 3D bar chart of the last year of contributions — one bar per
 day, taller and brighter for more active days.
@@ -155,6 +165,23 @@ screenY = originY + (col + row) · halfTileHeight − height
 Bars are drawn back-to-front (increasing `col + row`) so nearer bars
 correctly cover farther ones — see `render()` and `barSvg()` in the script
 for the full geometry.
+
+A zero-contribution day gets height 0 and no side walls — just a flat top
+that merges into its neighbors — so a quiet stretch reads as a calm,
+continuous mat instead of a field of small pillars. Only days with real
+activity rise up as distinct blocks.
+
+**Step 3 — match the tech-stack card.** Rather than a fixed pixel size, the
+tile footprint is solved backwards from a target width: it reads
+`tech-stack.json` via `scripts/layout-config.js`'s shared `COLUMN_WIDTH` to
+compute exactly what width `generate-tech-stack-svg.js` would produce for
+the current column count, then picks `halfW` so `2·MARGIN + (weeks +
+7)·halfW` equals that number. The two SVGs are always the same width, no
+matter how many weeks GitHub returns or how many tech-stack columns you
+have. The card background, border, and empty-day ("ground") color also use
+the exact same light/dark tokens as `tech-stack-rings.svg`, so both cards
+look like one consistent design system rather than two separately-themed
+widgets.
 
 ### Getting a token — read access only
 
@@ -216,13 +243,14 @@ The PAT never needs write access because it's never used to push anything.
 
 ### To use this on your own profile
 
-1. Copy `scripts/generate-contribution-graph.js` and
-   `.github/workflows/contribution-graph.yml` into your own
+1. Copy `scripts/generate-contribution-graph.js`, `scripts/layout-config.js`,
+   and `.github/workflows/contribution-graph.yml` into your own
    `<username>/<username>` repo.
 2. Create your own PAT (`read:user` only) as above.
-3. Add it as a repo secret. Either name it `CONTRIB_TOKEN` to match the
-   workflow file as-is with zero edits, or name it anything else and update
-   the `secrets.<name>` line in the workflow to match.
+3. Add it as a repo secret, named whatever you like, then make sure the
+   workflow's `env: CONTRIB_TOKEN: ${{ secrets.<your-secret-name> }}` line
+   references that same name — the script itself always just reads an env
+   var called `CONTRIB_TOKEN`, however you name the underlying secret.
 4. Add `![3D contribution terrain](./contribution-graph.svg)` to your
    `README.md`.
 5. Trigger it once manually — **Actions tab → generate-contribution-graph →
