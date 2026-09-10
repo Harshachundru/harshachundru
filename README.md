@@ -15,13 +15,16 @@ Here are some ideas to get you started:
 - ⚡ Fun fact: ...
 -->
 
-### 📊 My GitHub Contribution Graph
+### 🐍 My GitHub Contribution Snake
 
-![3D contribution graph](./profile-3d-contrib/profile-season-animate.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Harshachundru/harshachundru/output/dist/github-snake-dark.svg" />
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Harshachundru/harshachundru/output/dist/github-snake.svg" />
+  <img alt="github contribution snake animation" src="https://raw.githubusercontent.com/Harshachundru/harshachundru/output/dist/github-snake.svg" />
+</picture>
 
 <!--
-Generated nightly by .github/workflows/profile-3d-contrib.yml via yoshi389111/github-profile-3d-contrib.
-Other available renders once the workflow has run at least once:
-  profile-green-animate.svg, profile-night-view.svg, profile-night-green.svg,
-  profile-night-rainbow.svg, profile-gitblock.svg (all under ./profile-3d-contrib/)
+Generated every 12 hours by .github/workflows/snake.yml via Platane/snk.
+The rendered SVGs are pushed to the orphan `output` branch (not main) and
+served from there via raw.githubusercontent.com, so main stays clean.
 -->
