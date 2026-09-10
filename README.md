@@ -14,6 +14,18 @@ Here are some ideas to get you started:
 - 😄 Pronouns: ...
 - ⚡ Fun fact: ...
 -->
+# Welcome
+
+Hello ```np.random.random()``` stranger! Welcome to my github page.
+
+### 📊 My GitHub Contribution Graph (3D)
+
+![3D contribution graph](./profile-3d-contrib/profile-season-animate.svg)
+
+<!--
+Generated nightly by .github/workflows/profile-3d-contrib.yml via yoshi389111/github-profile-3d-contrib.
+Committed directly to main under ./profile-3d-contrib/.
+-->
 
 ### 🐍 My GitHub Contribution Snake
 
