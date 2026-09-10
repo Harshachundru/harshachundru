@@ -131,7 +131,12 @@ function targetWidth() {
 // see targetWidth() below. It's sized so this SVG always ends up exactly as
 // wide as tech-stack-rings.svg, however many weeks or tech-stack columns
 // either one has, so the two cards line up on the profile page.
-const TILE_ASPECT = 6.5 / 11; // half-height : half-width ratio to preserve whatever the absolute tile size ends up being
+// Half-height : half-width ratio for one tile. Chosen so the finished card's
+// *height* also lands close to tech-stack-rings.svg's height (not just its
+// width) — a shallower iso angle than a "true" 2:1 isometric grid, but it's
+// what keeps 53 weeks x 7 days from rendering as a tall, squarish block next
+// to the tech-stack card's wide, flat one.
+const TILE_ASPECT = 0.22;
 // Zero-contribution days sit perfectly flush with the ground (height 0) so
 // empty stretches read as a calm, continuous flat mat instead of a field of
 // small pillars — only days with real activity rise up as distinct blocks,

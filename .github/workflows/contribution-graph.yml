@@ -3,6 +3,12 @@ name: generate-contribution-graph
 on:
   schedule:
     - cron: "0 18 * * *" # nightly, matches the old profile-3d-contrib schedule
+  push:
+    branches: [main]
+    paths:
+      - "scripts/generate-contribution-graph.js"
+      - "scripts/layout-config.js"
+      - "tech-stack.json" # changes the shared target width this script matches
   workflow_dispatch:
 
 permissions:

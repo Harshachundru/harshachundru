@@ -8,13 +8,16 @@ Hello ```np.random.random()``` stranger! Welcome to my github page.
 
 ### Status Log
 
-`[OK]` full-stack engineer, booted 2021, based in Dublin, uptime still climbing
-`[OK]` shipped and now owns five production portals end to end, requirements through deployment
-`[OK]` fluent in two backend runtimes at once (Python, Node.js) so no single ecosystem's bad day takes the day down
-`[OK]` async work handed off to Celery and Redis instead of politely waiting its turn in line
-`[OK]` every deploy fronted by NGINX, boxed by Docker, provisioned by Ansible
-`[OK]` tests written before the code they test, mostly out of habit at this point
-`[WARN]` occasionally re-reads its own PostgreSQL migrations at 2am, just to be sure
+```
+[OK]    full-stack engineer, booted 2021, based in Dublin, uptime still climbing
+[OK]    shipped and now owns five production portals end to end, requirements through deployment
+[OK]    fluent in two backend runtimes at once (Python, Node.js) so no single
+        ecosystem's bad day takes the whole day down
+[OK]    async work handed off to Celery and Redis instead of politely waiting its turn in line
+[OK]    every deploy fronted by NGINX, boxed by Docker, provisioned by Ansible
+[OK]    tests written before the code they test, mostly out of habit at this point
+[WARN]  occasionally re-reads its own PostgreSQL migrations at 2am, just to be sure
+```
 
 ### My Tech Stack Proficiency
 
